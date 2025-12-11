@@ -1,0 +1,993 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>VK — Mood & Daily Motivation</title>
+  <style>
+    :root{
+      --bg1:#071019; --card:#07182355; --accent:#00f0ff; --glass: rgba(255,255,255,0.04);
+      --neon: 0 10px 40px rgba(0,240,255,0.06);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;background:linear-gradient(135deg,#06121a,#082533);font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;color:#e9ffff;display:flex;align-items:center;justify-content:center;padding:18px;}
+    .app{width:100%;max-width:1000px;display:grid;grid-template-columns:1fr 360px;gap:18px}
+    @media (max-width:980px){.app{grid-template-columns:1fr}}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));border-radius:14px;padding:18px;box-shadow:var(--neon);border:1px solid rgba(0,255,255,0.04)}
+    header{display:flex;align-items:center;gap:12px}
+    .logo{width:52px;height:52px;border-radius:12px;background:linear-gradient(135deg,#00d4ff22,#00ffff22);display:flex;align-items:center;justify-content:center;font-weight:800;color:#001;box-shadow:0 6px 22px rgba(0,255,255,0.04)}
+    h1{margin:0;font-size:18px}
+    .subtitle{margin:4px 0 0;font-size:13px;opacity:0.9}
+
+    /* Main area */
+    .main{padding-top:12px}
+    .home-actions{display:flex;gap:10px;align-items:center;justify-content:center;margin:14px 0}
+    .btn{cursor:pointer;padding:10px 14px;border-radius:10px;border:1px solid rgba(0,255,255,0.08);background:transparent;color:inherit;font-weight:700}
+    .primary{background:linear-gradient(90deg,#00d4ff33,#00aaff33);box-shadow:0 6px 30px rgba(0,170,255,0.06);border:none}
+    .moods-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:12px}
+    @media (max-width:720px){.moods-grid{grid-template-columns:repeat(3,1fr)}}
+    .mood-tile{padding:12px;border-radius:12px;background:var(--glass);cursor:pointer;border:1px solid rgba(255,255,255,0.03);display:flex;flex-direction:column;align-items:center;gap:8px;transition:transform .15s}
+    .mood-tile:hover{transform:translateY(-6px)}
+    .emoji{font-size:20px}
+    .mood-label{font-size:13px;font-weight:700}
+
+    /* Motivation card */
+    .motivation-screen{display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:26px;gap:12px}
+    .motivation-text{font-size:20px;font-weight:800;color:var(--accent);text-shadow:0 0 14px rgba(0,240,255,0.06)}
+    .motivation-author{font-size:13px;opacity:0.85}
+    .controls{display:flex;gap:8px;margin-top:8px}
+
+    /* Right column: history + tools */
+    .right{display:flex;flex-direction:column;gap:12px}
+    .history{flex:1;overflow:auto;padding:12px;border-radius:12px;background:linear-gradient(180deg, rgba(0,0,0,0.12), rgba(0,0,0,0.06));border:1px solid rgba(255,255,255,0.02)}
+    .history h3{margin:0 0 10px 0}
+    .history-list{display:flex;flex-direction:column;gap:8px}
+    .history-item{display:flex;justify-content:space-between;align-items:center;padding:8px;border-radius:10px;background:rgba(255,255,255,0.02)}
+    .history-item .meta{font-size:12px;opacity:0.85}
+
+    .footer-tools{display:flex;gap:8px;align-items:center;justify-content:center;padding:12px}
+    .small{padding:8px 10px;font-size:13px;border-radius:10px}
+
+    /* Modal blur */
+    .modal{position:fixed;top:0;left:0;width:100%;height:100%;backdrop-filter:blur(10px);background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .45s;z-index:1300}
+    .modal.show{opacity:1;pointer-events:all}
+    .modal-card{background:linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));padding:28px;border-radius:16px;max-width:520px;width:92%;text-align:center;box-shadow:0 30px 80px rgba(0,0,0,0.6);border:1px solid rgba(0,255,255,0.06)}
+    .modal-quote{font-size:20px;font-weight:800;color:var(--accent);margin-bottom:10px}
+    .modal-author{font-size:14px;opacity:0.9;margin-bottom:18px}
+    .close-btn{cursor:pointer;padding:10px 16px;border-radius:999px;border:none;background:linear-gradient(90deg,#00d4ff,#00aaff);color:#001;font-weight:800}
+    .progress-container{height:8px;background:rgba(255,255,255,0.06);border-radius:999px;overflow:hidden;margin-top:12px}
+    .progress-bar{height:100%;width:0;background:linear-gradient(90deg,#00d4ff,#00aaff);transition:width linear}
+
+    /* small helper */
+    .muted{opacity:0.85;font-size:13px}
+    .center{display:flex;align-items:center;justify-content:center}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="card">
+      <header>
+        <div class="logo">VK</div>
+        <div>
+          <h1>Mood & Motivation</h1>
+          <div class="subtitle">Pick a mood — get a tailored boost. Daily motivation appears on open.</div>
+        </div>
+      </header>
+
+      <div class="main">
+        <div class="home-actions center">
+          <button id="openDailyBtn" class="btn primary">Open Daily Motivation</button>
+          <button id="openHistoryBtn" class="btn">Open History</button>
+        </div>
+
+        <div id="home" aria-live="polite">
+          <h2 style="text-align:center;margin:10px 0">How are you feeling today?</h2>
+
+          <div class="moods-grid" id="moodsGrid">
+            </div>
+        </div>
+
+        <div id="motivationScreen" class="motivation-screen card">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div id="selectedEmoji" style="font-size:28px"></div>
+            <div style="text-align:left">
+              <div id="selectedMood" style="font-weight:800"></div>
+              <div class="muted" id="selectedTime"></div>
+            </div>
+          </div>
+          <div class="motivation-text" id="motivationText">...</div>
+          <div class="motivation-author" id="motivationAuthor">—</div>
+
+          <div class="controls">
+            <button id="backBtn" class="btn">Back</button>
+            <button id="nextBtn" class="btn primary">Next Motivation</button>
+            <button id="saveBtn" class="btn">Save Mood</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="right">
+      <div class="card history" id="historyPanel">
+        <h3>Mood History</h3>
+        <div class="history-list" id="historyList">
+          <div class="muted">No entries yet — your saved moods will appear here.</div>
+        </div>
+      </div>
+
+      <div class="card center" style="padding:12px;flex-direction:column">
+        <div style="font-weight:800">Tools</div>
+        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+          <button id="clearAllBtn" class="btn small">Clear All</button>
+        </div>
+        <div style="margin-top:10px;font-size:12px;opacity:0.8">Data stored locally on your device.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="dailyModal" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-quote" id="dailyModalQuote">...</div>
+      <div class="modal-author" id="dailyModalAuthor">—</div>
+      <div style="display:flex;gap:10px;justify-content:center">
+        <button class="close-btn" id="dailyClose">Close</button>
+      </div>
+      <div class="progress-container">
+        <div class="progress-bar" id="dailyProgress"></div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* ---------------------
+   Data: moods + 50 quotes each
+   --------------------- */
+
+/* NOTE: Each mood has 50 concise motivational or comforting quotes.
+   They are written to be unique and short so the file remains readable.
+*/
+
+const MOODS = {
+  happy: {
+    emoji: '😊',
+    label: 'Happy',
+    quotes: [
+      "Smile — the world shines back.",
+      "Your joy is contagious.",
+      "Cherish the little wins.",
+      "Let your light lead you.",
+      "Happiness grows with gratitude.",
+      "Keep the good vibes rolling.",
+      "Bring your own sunshine.",
+      "Celebrate this moment.",
+      "Your laughter is a gift.",
+      "Joy fuels creativity.",
+      "Share your smile freely.",
+      "Savor the simple pleasures.",
+      "Happiness starts within.",
+      "Find delight in small things.",
+      "Your optimism opens doors.",
+      "Dance like nobody's watching.",
+      "Hold onto what makes you smile.",
+      "Spread a little kindness today.",
+      "Keep your heart light.",
+      "Choose joy intentionally.",
+      "Grin and glow on.",
+      "Good days add up.",
+      "Radiate warmth to others.",
+      "Let happy thoughts lead.",
+      "Carry this feeling forward.",
+      "You deserve this happiness.",
+      "Breathe in this bright moment.",
+      "Feed your soul with fun.",
+      "Celebrate your progress.",
+      "Joy attracts more joy.",
+      "Your smile starts revolutions.",
+      "Relax and enjoy the now.",
+      "Happiness is a choice today.",
+      "Lighten your load with laughter.",
+      "Be present and feel good.",
+      "Happiness is your superpower.",
+      "Glow from the inside out.",
+      "Make today delight-filled.",
+      "Choose what lifts you up.",
+      "Let joy be your compass.",
+      "Collect happy moments today.",
+      "You’re doing great, keep smiling.",
+      "Be grateful and be joyful.",
+      "Simple pleasures, big meaning.",
+      "Keep your heart open.",
+      "Give yourself permission to enjoy.",
+      "Happiness multiplies when shared.",
+      "Bring a little cheer wherever you go.",
+      "Live this happy chapter fully."
+    ]
+  },
+
+  sad: {
+    emoji: '😢',
+    label: 'Sad',
+    quotes: [
+      "This feeling will pass, hold on.",
+      "It's okay to rest and heal.",
+      "Quiet strength grows in pain.",
+      "You are brave for still trying.",
+      "Tears are part of the process.",
+      "Small steps count in hard days.",
+      "Give yourself space to grieve.",
+      "Reach out — you don't have to carry this alone.",
+      "Rain nourishes the roots of you.",
+      "One breath at a time, keep going.",
+      "Soft moments heal worn hearts.",
+      "You are allowed to feel deeply.",
+      "Kindness to yourself matters most.",
+      "This storm teaches new resilience.",
+      "Tomorrow can be kinder to you.",
+      "Hold on to a tiny hope.",
+      "Your courage is quiet but real.",
+      "You are stronger than you know.",
+      "Comfort can arrive slowly — be patient.",
+      "Grief is love remembering itself.",
+      "You're not broken; you're in process.",
+      "Lean into the care that’s offered.",
+      "Allow rest and gentle recovery.",
+      "You matter, especially now.",
+      "Let time do its careful work.",
+      "Find one small anchor today.",
+      "You deserve softness and rest.",
+      "Take tiny steps toward light.",
+      "Be as gentle with yourself as you would be with a friend.",
+      "This is a chapter, not the whole book.",
+      "Your feelings are valid and real.",
+      "Healing happens in quiet ways.",
+      "You are worthy of tenderness.",
+      "Give your heart a break sometimes.",
+      "Hold one good thought close.",
+      "Hope whispers in small ways.",
+      "Let warmth find its way back to you.",
+      "A softer tomorrow is possible.",
+      "Lean on safe people and rest.",
+      "Care for yourself with kindness.",
+      "A new sunrise will touch you.",
+      "Small comforts matter today.",
+      "You are seen even when you feel unseen.",
+      "Take your time to recover.",
+      "Grace is available to you now.",
+      "You are more than this sadness.",
+      "Keep seeking little sparks of light.",
+      "You’ll find your balance again.",
+      "Be patient with your heart."
+    ]
+  },
+
+  stressed: {
+    emoji: '😰',
+    label: 'Stressed',
+    quotes: [
+      "Slow your breath — regain the center.",
+      "Small steps reduce big stress.",
+      "Prioritize one thing right now.",
+      "You’re allowed to simplify today.",
+      "A calm mind nurtures clear choices.",
+      "Pause, breathe, then proceed.",
+      "Let go of what you can’t control.",
+      "Break tasks into tiny wins.",
+      "You’re stronger than your pressure.",
+      "Rest is not a luxury — it’s a tool.",
+      "You can set healthy boundaries.",
+      "Progress over perfection always.",
+      "Keep your focus gentle and steady.",
+      "A 5-minute reset can change the day.",
+      "You are capable of handling this.",
+      "Choose one kind action for yourself.",
+      "Small routines rebuild your calm.",
+      "Slow steps lead out of overwhelm.",
+      "Breathe in calm, exhale tension.",
+      "A rested mind solves more easily.",
+      "Simplify and move forward steadily.",
+      "Trust your capacity to manage this.",
+      "Let small wins collect today.",
+      "Decompress with something pleasant.",
+      "You’re allowed to step away briefly.",
+      "Your limits are healthy signals.",
+      "Plan, then act — one thing at a time.",
+      "Focus on what you can finish now.",
+      "A clear list helps calm racing thoughts.",
+      "You can say no with compassion.",
+      "Balance will return, slowly but surely.",
+      "Use your support — you don’t have to do it alone.",
+      "Gentle persistence beats frantic pressure.",
+      "Give yourself permission to reset.",
+      "One small victory will steady you.",
+      "You’re doing your best in tough times.",
+      "Take a breath and begin again.",
+      "Tiny habits reduce massive stress.",
+      "Prioritize rest like a strategy.",
+      "Be practical — choose the next right thing.",
+      "You’ll navigate this; one day at a time.",
+      "Comfort yourself with a small ritual.",
+      "Small progress is still progress.",
+      "You can reframe one worry at a time.",
+      "Let nature help slow your pace.",
+      "Calm actions lead to calm outcomes.",
+      "This pressure does not define you.",
+      "You are more resilient than you realize."
+    ]
+  },
+
+  angry: {
+    emoji: '😡',
+    label: 'Angry',
+    quotes: [
+      "Cool down before you react.",
+      "Breathe, then speak with clarity.",
+      "Anger is energy — redirect it wisely.",
+      "Choose calm over a quick reply.",
+      "Pause and reclaim your center.",
+      "You can express truth without harm.",
+      "Let space soften the firing edge.",
+      "A calm response wins more often.",
+      "Channel energy into constructive action.",
+      "Your peace matters more than the moment.",
+      "Sit with your feeling before deciding.",
+      "Use anger as a signal to set boundaries.",
+      "Take a walk and let steam fade.",
+      "Respect yourself even in the heat.",
+      "A measured voice prevents regret.",
+      "Cool water and a breath can reset you.",
+      "Hold your intent to be kind and firm.",
+      "Anger passes when given time.",
+      "You control how you respond next.",
+      "Set a limit, then protect it calmly.",
+      "Create distance to find perspective.",
+      "Speak facts, not flames.",
+      "Choose boundaries over battles.",
+      "Let silence be your thoughtful ally.",
+      "Respond for solutions, not to vent.",
+      "You can step back and still be strong.",
+      "Time is your friend in angry times.",
+      "Practice calm, it becomes muscle memory.",
+      "Don’t trade long-term peace for short-term reaction.",
+      "Finish first, then decide how to act.",
+      "Breathe in calm, breathe out heat.",
+      "Redirect energy into purposeful work.",
+      "Hold to dignity, even while upset.",
+      "A gentle tone can disarm tension.",
+      "You will feel clearer after a pause.",
+      "Anger is temporary — your future matters more.",
+      "Choose the outcome you’ll be proud of.",
+      "Take space and cool off before replying.",
+      "Let reason steer the emotional wave.",
+      "You can be firm and remain kind.",
+      "Reframe the moment into a next step.",
+      "Protect your peace as priority.",
+      "Allow emotion, but choose the action wisely.",
+      "Softness strengthens, even in anger.",
+      "You are bigger than this one moment.",
+      "Let patience act as your witness.",
+      "Use this energy to improve your future."
+    ]
+  },
+
+  motivated: {
+    emoji: '💪',
+    label: 'Motivated',
+    quotes: [
+      "Start now — the momentum will follow.",
+      "Small steps compound into big wins.",
+      "Your effort today builds tomorrow.",
+      "Consistency beats occasional fury.",
+      "Focus on progress, not perfection.",
+      "Take the next little action now.",
+      "Your future self will thank you.",
+      "Turn plans into tiny daily rituals.",
+      "Action dissolves uncertainty.",
+      "Fuel your ambition with routine.",
+      "Keep moving — results will appear.",
+      "Discipline makes dreams practical.",
+      "One more rep, one more line — keep going.",
+      "Set a deadline and honor it.",
+      "Block time and protect it fiercely.",
+      "Celebrate the steps you complete.",
+      "Let discipline be your daily habit.",
+      "Build momentum with modest wins.",
+      "Turn doubt into small experiments.",
+      "Create a system that supports you.",
+      "Ambition needs patient repetition.",
+      "Persist today, harvest later.",
+      "Focus on the next right task.",
+      "Arrive early to your goals with small actions.",
+      "Design your day to match your goals.",
+      "Practice focus like a muscle.",
+      "You are closer than you think.",
+      "Finish one thing then start the next.",
+      "Momentum rewards steady effort.",
+      "Keep promises to yourself, always.",
+      "Start imperfectly — improve quickly.",
+      "Small discipline leads to big freedom.",
+      "Hard work pays quiet dividends.",
+      "Be relentless in your tiny steps.",
+      "Stack habits to outpace obstacles.",
+      "Turn inspiration into schedule.",
+      "Finish tasks to fuel motivation.",
+      "Consistency compounds into mastery.",
+      "Make progress your daily currency.",
+      "Work, refine, repeat — success follows.",
+      "Show up today, again tomorrow.",
+      "Persist with smart, tiny actions.",
+      "Build systems, not willpower alone.",
+      "Win the day, win the month.",
+      "Focus eyes on the next task.",
+      "Your effort is not wasted.",
+      "Make your future inevitable with work.",
+      "Begin — that is the bravest step."
+    ]
+  },
+
+  lonely: {
+    emoji: '🤍',
+    label: 'Lonely',
+    quotes: [
+      "You are seen, even in quiet hours.",
+      "Alone can be gentle and restorative.",
+      "Reach out — a small hello matters.",
+      "Your presence matters to someone.",
+      "Soft moments can become new connections.",
+      "You are worthy of deep companionship.",
+      "Soothe yourself with a kind ritual.",
+      "A book or call can change the day.",
+      "Tenderness to yourself creates space.",
+      "Notice small joys — they are company.",
+      "Invite someone for a brief chat.",
+      "Build tiny bridges to new people.",
+      "You are enough, exactly as you are.",
+      "Be curious — relationships grow slowly.",
+      "Share a small part of your world.",
+      "Do something that brings you comfort.",
+      "Kindness draws others to you.",
+      "One message can start a warm chain.",
+      "You deserve attention and care.",
+      "Cultivate a hobby that meets others.",
+      "Let light come through small actions.",
+      "Create a ritual that comforts you.",
+      "You are not a burden to offer feelings.",
+      "Small invitations open new doors.",
+      "Tenderness begins with your own hands.",
+      "Seek community around a shared interest.",
+      "Be brave — the first hello matters.",
+      "One connection might change the season.",
+      "Care for yourself like a friend would.",
+      "You matter to someone even if unseen now.",
+      "Tiny acts of outreach often surprise us.",
+      "Find a place where your voice fits.",
+      "Slowly let trust return to you.",
+      "Your kindness will meet other kindness.",
+      "Allow grace and soft new starts.",
+      "Look for spaces that value you.",
+      "You are never truly alone in feeling this way.",
+      "Keep opening gently to others.",
+      "One kind word can change the day.",
+      "Be the friend you hope to find.",
+      "Allow yourself time and tenderness.",
+      "You are a person worth knowing.",
+      "Small routines connect you to life.",
+      "Let curiosity lead you to new friends.",
+      "A tiny step toward others is progress.",
+      "Anchor in safe people, little by little.",
+      "Companionship grows from consistent care.",
+      "Hold hope for new meetings soon."
+    ]
+  },
+
+  confused: {
+    emoji: '🤔',
+    label: 'Confused',
+    quotes: [
+      "Confusion is the start of clarity.",
+      "Ask one question and the fog lifts.",
+      "Break it down into tiny choices.",
+      "One step clarifies the next step.",
+      "Trial trumps perfect planning.",
+      "Gather facts, then make a small move.",
+      "Curiosity dissolves confusion over time.",
+      "Use a fresh perspective to reframe.",
+      "Write down options and pick one.",
+      "Testing reveals what thinking cannot.",
+      "Simplify decisions into first steps.",
+      "Your confusion is a signal to learn.",
+      "Start with what you do know.",
+      "Small experiments create clarity fast.",
+      "Be patient; clarity often arrives slowly.",
+      "Ask for a helpful voice or mentor.",
+      "Use deadlines to force a decision.",
+      "Make one move, then reassess.",
+      "Collect data instead of spinning alone.",
+      "Put one tiny plan into practice.",
+      "Confusion is temporary — action heals it.",
+      "Tidy your desk to tidy your mind.",
+      "Map out the options visually.",
+      "Choose the least risky next step.",
+      "You don’t need to know it all now.",
+      "Clarity builds from small completed tasks.",
+      "Trust small moves to inform you.",
+      "Replace worry with one testable choice.",
+      "Take the simplest practical action first.",
+      "Ask for a second opinion, briefly.",
+      "Your next step will teach you more.",
+      "Start with what is easy to do.",
+      "Simplicity often uncovers the path.",
+      "Use fresh input to re-evaluate assumptions.",
+      "One question to a friend can cut confusion.",
+      "Make a tiny commitment and observe results.",
+      "Confidence follows doable experiments.",
+      "Confusion is curiosity in disguise.",
+      "You’ll find a direction with small tries.",
+      "Turn thinking into a short trial.",
+      "Record what you learn and repeat.",
+      "Incremental steps lead to certainty.",
+      "Clarity is a series of small discoveries.",
+      "Trust process over paralysis today.",
+      "Ask, test, learn, then refine.",
+      "Begin — learning reveals the path.",
+      "A single action beats perfect indecision."
+    ]
+  },
+
+  excited: {
+    emoji: '🤩',
+    label: 'Excited',
+    quotes: [
+      "Ride this energy — take bold action.",
+      "Channel excitement into focused steps.",
+      "Let enthusiasm start one small project.",
+      "Share your spark with someone else.",
+      "Capture momentum before it fades.",
+      "Plan a concrete next step now.",
+      "Energy plus structure equals progress.",
+      "Use excitement as a starting engine.",
+      "Celebrate the thrill with healthy action.",
+      "Take notes while the idea is hot.",
+      "Turn passion into a tiny plan.",
+      "Your excitement is a powerful signal.",
+      "Invite others to join your enthusiasm.",
+      "Focus energy on a single priority.",
+      "Turn sparks into durable routines.",
+      "Start before perfect planning arrives.",
+      "Bold beginnings often come from excitement.",
+      "Use today’s energy to build momentum.",
+      "Channel your zeal into one task.",
+      "This feeling is fuel for creative work.",
+      "Make an outline to trap your ideas.",
+      " excitement -> action = results.",
+      "Capture and refine your brilliant spark.",
+      "Do something that feeds this thrill.",
+      "Share the news and grow the moment.",
+      "Celebrate the start, then continue steadily.",
+      "Plant a seed while you’re inspired.",
+      "Turn buzz into steady, thoughtful work.",
+      "One step today makes the excitement last.",
+      "Protect this energy and direct it wisely.",
+      "Make a first draft now while inspired.",
+      "Energy favors quick, decisive moves.",
+      "Let momentum carry you forward.",
+      "Use structure to harness your excitement.",
+      "Create a plan that bounds your enthusiasm.",
+      "Spark today; craft tomorrow’s progress.",
+      "Your excitement is contagious—use it kindly.",
+      "Build a small win from this thrill.",
+      "Ride the wave, then steady the ship.",
+      "Now is a perfect time to start.",
+      "Capture the idea; then refine it.",
+      "Turn passion into repeated practice.",
+      "Start bold, then tune with patience.",
+      "Fuel progress with this joyful surge.",
+      "Harness energy through focused steps.",
+      "Let excitement open new doors today."
+    ]
+  },
+
+  tired: {
+    emoji: '😴',
+    label: 'Tired',
+    quotes: [
+      "Rest: your body’s way to recharge.",
+      "Short breaks compound into clarity.",
+      "Gentle rest repairs creative power.",
+      "Prioritize sleep like your productivity depends on it — it does.",
+      "A small nap can reset agility.",
+      "Pause and honor your limits today.",
+      "Rest is productive, not lazy.",
+      "Slow down — your pace is a tool.",
+      "Gentle movement can revive stamina.",
+      "Hydrate, rest, and let energy return.",
+      "Protect sleep as sacred work time.",
+      "One restful hour can change tomorrow.",
+      "Simplify tasks to fit your energy.",
+      "Conserve energy for what truly matters.",
+      "Listen to your body with kindness.",
+      "Micro-rests keep you effective longer.",
+      "A calm evening rebuilds your reserves.",
+      "Trade busyness for careful rest tonight.",
+      "Close screens early — favor sleep.",
+      "Rest fuels better decisions later.",
+      "A single good night's sleep helps vastly.",
+      "Give yourself permission to slow down.",
+      "Short pauses prevent larger breakdowns.",
+      "Reset with a warm shower and rest.",
+      "You’re doing enough — rest to recover.",
+      "A rested mind solves puzzles faster.",
+      "Relaxation is a strategy for endurance.",
+      "Let quiet rebuild your energy stores.",
+      "Soft rituals before bed matter greatly.",
+      "Gentle sleep is generous to tomorrow.",
+      "Step back and allow recharge.",
+      "You’ll achieve more when well-rested.",
+      "Care for sleep as part of the plan.",
+      "Ease into rest and let worries soften.",
+      "Recharge slowly and return stronger.",
+      "Accept your tiredness and rest generously.",
+      "Conserve energy for tomorrow’s important tasks.",
+      "Comfort and rest will bring clarity.",
+      "Short rests produce long results.",
+      "Be patient with your energy rhythm.",
+      "Sleep is non-negotiable — protect it.",
+      "A restful pause is a productive strategy.",
+      "Return to tasks when your mind is fresh.",
+      "Small naps restore big focus.",
+      "Take care — you deserve deep rest.",
+      "Recharge now for better tomorrows."
+    ]
+  },
+
+  grateful: {
+    emoji: '🙏',
+    label: 'Grateful',
+    quotes: [
+      "Gratitude turns ordinary into blessings.",
+      "Notice three small things you appreciate.",
+      "A thankful heart changes perspective.",
+      "Name one thing that brings you joy today.",
+      "Gratitude deepens the meaning of life.",
+      "Thankfulness unlocks gentle contentment.",
+      "Share thanks with one person right now.",
+      "Small grateful moments build big peace.",
+      "Count blessings — then pass them forward.",
+      "Gratitude grounds you in abundance.",
+      "Offer thanks for a quiet blessing.",
+      "Write one short note of appreciation.",
+      "Grateful thinking brightens the day.",
+      "Savor one small pleasure thoughtfully.",
+      "Gratitude is a daily practice worth keeping.",
+      "Say 'thank you' to yourself today.",
+      "Recall a kind moment and relive it.",
+      "Gratitude waters the roots of joy.",
+      "Notice the ordinary gifts around you.",
+      "Thankfulness can change how you see life.",
+      "Express appreciation even for small wins.",
+      "Gratitude invites more to be thankful for.",
+      "Pause to feel the warmth of thanks.",
+      "A grateful mind is a peaceful mind.",
+      "Share appreciation to multiply the feeling.",
+      "Find beauty in the everyday routine.",
+      "Gratitude softens sharp edges of life.",
+      "Say thanks for one thing before bed.",
+      "Gratitude gives meaning to small victories.",
+      "Keep a tiny list of bright moments.",
+      "Thank the people who helped you today.",
+      "Gratitude is a cultivated muscle — train it.",
+      "Notice the kindness that surrounds you.",
+      "Appreciate what is working right now.",
+      "A thankful heart invites more peace.",
+      "Make space for appreciation each morning.",
+      "Gratitude makes abundance feel real.",
+      "Offer a small compliment to someone.",
+      "Be thankful for progress, not just perfection.",
+      "Collect moments of gratitude like treasures.",
+      "Your thankful heart fuels resilience.",
+      "Find a single blessing and celebrate it.",
+      "Gratitude improves mood instantly.",
+      "Savor memories that made you smile.",
+      "A grateful pause resets your perspective.",
+      "Let appreciation shape your day."
+    ]
+  }
+};
+
+/* ---------------------
+   Daily quotes (fallback)
+   --------------------- */
+const DAILY_QUOTES = [
+  {q:"Believe you can and you're halfway there.", a:"Theodore Roosevelt"},
+  {q:"The best way to get started is to quit talking and begin doing.", a:"Walt Disney"},
+  {q:"Don’t let yesterday take up too much of today.", a:"Will Rogers"},
+  {q:"It always seems impossible until it’s done.", a:"Nelson Mandela"},
+  {q:"Happiness is not something ready-made. It comes from your own actions.", a:"Dalai Lama"},
+  {q:"Success is not final, failure is not fatal: it is the courage to continue that counts.", a:"Winston Churchill"},
+  {q:"The future depends on what you do today.", a:"Mahatma Gandhi"},
+  {q:"Do something today that your future self will thank you for.", a:"Sean Patrick Flanery"},
+  {q:"Make each day your masterpiece.", a:"John Wooden"},
+  {q:"The best revenge is massive success.", a:"Frank Sinatra"},
+  {q:"Start where you are. Use what you have. Do what you can.", a:"Arthur Ashe"},
+  {q:"Quality is not an act, it is a habit.", a:"Aristotle"},
+  {q:"Turn your wounds into wisdom.", a:"Oprah Winfrey"},
+  {q:"Perseverance is not a long race; it is many short races one after another.", a:"Walter Elliot"},
+  {q:"What we fear of doing most is usually what we most need to do.", a:"Ralph Waldo Emerson"}
+];
+
+/* ---------------------
+   Storage keys & helpers
+   --------------------- */
+const STORAGE_KEYS = {
+  DAILY: 'vk_daily_motivation',
+  HISTORY: 'vk_mood_history'
+};
+
+function todayKey() {
+  const d = new Date();
+  return d.toISOString().split('T')[0]; // YYYY-MM-DD
+}
+
+function getRandomFrom(arr) {
+  return arr[Math.floor(Math.random()*arr.length)];
+}
+
+/* ---------------------
+   App Elements
+   --------------------- */
+const moodsGrid = document.getElementById('moodsGrid');
+const openDailyBtn = document.getElementById('openDailyBtn');
+const dailyModal = document.getElementById('dailyModal');
+const dailyModalQuote = document.getElementById('dailyModalQuote');
+const dailyModalAuthor = document.getElementById('dailyModalAuthor');
+const dailyProgress = document.getElementById('dailyProgress');
+const dailyClose = document.getElementById('dailyClose');
+
+const motivationScreen = document.getElementById('motivationScreen');
+const motivationText = document.getElementById('motivationText');
+const motivationAuthor = document.getElementById('motivationAuthor');
+const selectedMoodLabel = document.getElementById('selectedMood');
+const selectedEmoji = document.getElementById('selectedEmoji');
+const selectedTime = document.getElementById('selectedTime');
+
+const backBtn = document.getElementById('backBtn');
+const nextBtn = document.getElementById('nextBtn');
+const saveBtn = document.getElementById('saveBtn');
+
+const historyList = document.getElementById('historyList');
+const openHistoryBtn = document.getElementById('openHistoryBtn');
+const clearAllBtn = document.getElementById('clearAllBtn');
+
+let currentMoodKey = null;
+let currentMoodQuoteIndex = null;
+let dailyTimer = null;
+let dailyAutoCloseTimer = null;
+
+/* ---------------------
+   Init: build mood tiles
+   --------------------- */
+function buildMoodTiles() {
+  Object.keys(MOODS).forEach(key=>{
+    const m = MOODS[key];
+    const tile = document.createElement('div');
+    tile.className = 'mood-tile';
+    tile.innerHTML = `<div class="emoji">${m.emoji}</div><div class="mood-label">${m.label}</div>`;
+    tile.addEventListener('click', ()=>openMood(key));
+    moodsGrid.appendChild(tile);
+  });
+}
+
+/* ---------------------
+   Mood flow
+   --------------------- */
+function openMood(key) {
+  currentMoodKey = key;
+  currentMoodQuoteIndex = Math.floor(Math.random() * MOODS[key].quotes.length);
+  showMoodQuote();
+  // show motivation screen
+  document.getElementById('home').style.display = 'none';
+  motivationScreen.style.display = 'flex';
+  // update header info
+  selectedMoodLabel.textContent = MOODS[key].label;
+  selectedEmoji.textContent = MOODS[key].emoji;
+  selectedTime.textContent = new Date().toLocaleString();
+}
+
+function showMoodQuote() {
+  if (!currentMoodKey) return;
+  const arr = MOODS[currentMoodKey].quotes;
+  const q = arr[currentMoodQuoteIndex % arr.length];
+  motivationText.textContent = `"${q}"`;
+  motivationAuthor.textContent = `— ${MOODS[currentMoodKey].label}`;
+}
+
+backBtn.addEventListener('click', ()=>{
+  // back to home
+  motivationScreen.style.display = 'none';
+  document.getElementById('home').style.display = 'block';
+  currentMoodKey = null;
+});
+
+nextBtn.addEventListener('click', ()=>{
+  if (!currentMoodKey) return;
+  currentMoodQuoteIndex = (currentMoodQuoteIndex + 1) % MOODS[currentMoodKey].quotes.length;
+  showMoodQuote();
+});
+
+saveBtn.addEventListener('click', ()=>{
+  if (!currentMoodKey) return showToast('No mood selected');
+  const entry = {
+    mood: currentMoodKey,
+    label: MOODS[currentMoodKey].label,
+    emoji: MOODS[currentMoodKey].emoji,
+    quote: MOODS[currentMoodKey].quotes[currentMoodQuoteIndex],
+    date: new Date().toISOString()
+  };
+  saveHistoryEntry(entry);
+  renderHistory();
+  showToast('Saved to history');
+});
+
+/* ---------------------
+   History
+   --------------------- */
+function loadHistory() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.HISTORY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) { return []; }
+}
+
+function saveHistory(list) {
+  localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(list));
+}
+
+function saveHistoryEntry(entry) {
+  const list = loadHistory();
+  list.push(entry);
+  saveHistory(list);
+}
+
+function renderHistory() {
+  const list = loadHistory();
+  historyList.innerHTML = '';
+  if (!list || list.length === 0) {
+    historyList.innerHTML = '<div class="muted">No entries yet. Save moods as you like.</div>';
+    return;
+  }
+  // show latest first
+  list.slice().reverse().forEach((it, idx)=>{
+    const div = document.createElement('div');
+    div.className = 'history-item';
+    const left = document.createElement('div');
+    left.innerHTML = `<div style="font-weight:800">${it.emoji} ${it.label}</div><div class="meta">${it.quote}</div>`;
+    const right = document.createElement('div');
+    right.style.textAlign = 'right';
+    const time = new Date(it.date).toLocaleString();
+    right.innerHTML = `<div class="meta">${time}</div><div style="margin-top:6px"><button class="btn small" data-date="${it.date}">Delete</button></div>`;
+    div.appendChild(left); div.appendChild(right);
+    historyList.appendChild(div);
+    right.querySelector('button').addEventListener('click', ()=>{
+      deleteHistoryEntry(it.date);
+    });
+  });
+}
+
+function deleteHistoryEntry(iso) {
+  let list = loadHistory();
+  list = list.filter(i=>i.date !== iso);
+  saveHistory(list);
+  renderHistory();
+  showToast('Entry deleted');
+}
+
+/* ---------------------
+   Export / Import / Clear
+   --------------------- */
+clearAllBtn.addEventListener('click', ()=>{
+  if (!confirm('Clear all saved mood history?')) return;
+  localStorage.removeItem(STORAGE_KEYS.HISTORY);
+  renderHistory();
+  showToast('All history cleared');
+});
+
+/* ---------------------
+   Daily Modal logic (only once per day)
+   --------------------- */
+
+function openDailyModal() {
+  // check storage
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(STORAGE_KEYS.DAILY)); } catch(e){ saved = null; }
+  const key = todayKey();
+  let todays;
+  if (saved && saved.date === key && saved.quote) {
+    // use stored
+    todays = saved.quote;
+  } else {
+    // pick random daily quote from DAILY_QUOTES
+    const pick = getRandomFrom(DAILY_QUOTES);
+    todays = { q: pick.q, a: pick.a };
+    // persist
+    localStorage.setItem(STORAGE_KEYS.DAILY, JSON.stringify({ date: key, quote: todays }));
+  }
+
+  // show in modal
+  dailyModalQuote.textContent = `"${todays.q}"`;
+  dailyModalAuthor.textContent = `— ${todays.a || 'Unknown'}`;
+
+  // show modal with animation
+  dailyModal.classList.add('show');
+  dailyProgress.style.transition = 'width 10s linear';
+  // tiny delay for transition
+  setTimeout(()=>{ dailyProgress.style.width = '100%'; }, 50);
+
+  // auto close after 10s
+  clearTimeout(dailyAutoCloseTimer);
+  dailyAutoCloseTimer = setTimeout(()=>{ closeDailyModal(); }, 10000);
+}
+
+function closeDailyModal() {
+  dailyModal.classList.remove('show');
+  dailyProgress.style.width = '0%';
+  clearTimeout(dailyAutoCloseTimer);
+}
+
+dailyClose.addEventListener('click', ()=>{ closeDailyModal(); });
+
+/* Auto-open daily modal on first load */
+openDailyBtn.addEventListener('click', ()=>openDailyModal());
+
+/* On page load: show modal automatically */
+window.addEventListener('load', ()=>{
+  buildMoodTiles();
+  renderHistory();
+  // Auto-open daily modal
+  setTimeout(()=>{ openDailyModal(); }, 450); // slight delay for UI to render
+});
+
+/* ---------------------
+   History panel toggle (simple)
+   --------------------- */
+openHistoryBtn.addEventListener('click', ()=>{
+  // Scroll right panel into view (in narrow screens)
+  document.getElementById('historyPanel').scrollIntoView({behavior:'smooth'});
+  showToast('History panel focused');
+});
+
+/* ---------------------
+   Small toast messages (temporary)
+   --------------------- */
+let toastTimer = null;
+function showToast(msg) {
+  // reuse dailyModalQuote area at bottom temporarily as a transient toast?
+  // We'll create a small floating element
+  const t = document.createElement('div');
+  t.style.position = 'fixed';
+  t.style.left = '50%';
+  t.style.bottom = '28px';
+  t.style.transform = 'translateX(-50%)';
+  t.style.background = 'linear-gradient(90deg,#00d4ff,#00aaff)';
+  t.style.color = '#012';
+  t.style.padding = '10px 16px';
+  t.style.borderRadius = '999px';
+  t.style.fontWeight = '800';
+  t.style.boxShadow = '0 10px 40px rgba(0,0,0,0.6)';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ t.remove(); }, 2200);
+}
+
+/* ---------------------
+   Extra: keyboard shortcuts for convenience
+   --------------------- */
+document.addEventListener('keydown', (e)=>{
+  if (e.key === 'Escape' && dailyModal.classList.contains('show')) closeDailyModal();
+});
+
+/* ---------------------
+   END
+   --------------------- */
+</script>
+</body>
+</html>
